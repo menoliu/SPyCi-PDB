@@ -2,6 +2,9 @@
 Changelog
 =========
 
+* Upgrading internal calculator for PRE to use DEERPREdict
+* Adds ``DEERPREdict`` as new PyPi dependency
+
 v0.2.0 (2023-01-27)
 ------------------------------------------------------------
 
