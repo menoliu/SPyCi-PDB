@@ -3,8 +3,11 @@ import os
 import subprocess
 import sys
 
-from spycipdb.components.hullrad import Sved, model_from_pdb
+import pandas as pd
 
+from spycipdb.components.hullrad import Sved, model_from_pdb
+from DEERPREdict.PRE import PREpredict
+from MDAnalysis import Universe
 
 # Interesting way to import from repository that cannot be
 # installed as a module ;-)
@@ -169,3 +172,88 @@ def crysol_helper(pdb_path, lm):
     os.remove(paths + ".int")
     
     return pdb_name_ext, saxs_bc
+
+
+def deerpredict_helper(
+        fexp,
+        residue,
+        temperature,
+        atom_selection,
+        tau_c,
+        wh,
+        delay,
+        r_2,
+        pdb_path,
+        ):
+    """
+    Handle PREpredict back-calculation from DEERPREdict
+
+    Parameters
+    ----------
+    fexp : str or Path
+        Path to the PRE experimental data file formatted with
+        res1,atom1,res2,atom2.
+    
+    tau_c : float
+        Rotational tumbling time.
+        Defaults to 1.0e-9.
+
+    wh : float
+        Proton Larmor frequency / (2 pi 1e6).
+        Defaults to 700.0.
+    
+    delay : float
+        Inept delay depending on pulse sequence.
+        Defaults to 10.0e-3.
+        
+    r_2 : float
+        R2 spin value. Equal to R2,ox - R2,red.
+    
+    pdb_paths : list
+        List of paths to PDBs of interest.
+    
+    Returns
+    -------
+    residues : list
+        List of the residues as float.
+    
+    intensity_ratios : list
+        List of intensity ratios as float.
+    
+    pre_rates : list
+        List of PRE rates in Hz as float.
+    """
+    # TODO: see how to get PRE information of just
+    # one conformer. right now you need an ensemble for this
+    # and reweighting is done by BME...
+    cwd = os.getcwd()
+    pdb_name = os.path.basename(pdb_path[0])
+    log_file = '.log'
+    u = Universe(pdb_path[0], pdb_path)
+    pre_predict = PREpredict(
+        u,
+        residue=residue,
+        log_file=log_file,
+        temperature=temperature,
+        atom_selection=atom_selection
+        )
+    pre_predict.run(
+        output_prefix=pdb_name,
+        tau_c=tau_c,
+        delay=delay,
+        r_2=r_2,
+        wh=wh,
+        )
+    
+    os.remove(cwd + f"/{pdb_name}-{residue}.pkl")
+    os.remove(cwd + f"/{pdb_name}-Z-{residue}.dat")
+    os.remove(cwd + f"/.log")
+    output = cwd + f"/{pdb_name}-{residue}.dat"
+    output_df = pd.read_csv(output, delimiter=' ')
+    
+    residues = output_df.iloc[:, 0].tolist()
+    intensity_ratios = output_df.iloc[:, 1].tolist()
+    pre_rates = output_df.iloc[:, 2].tolist()
+    
+    return residues, intensity_ratios, pre_rates
+    
