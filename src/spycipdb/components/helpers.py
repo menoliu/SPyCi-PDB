@@ -4,6 +4,7 @@ import subprocess
 import sys
 
 import pandas as pd
+import numpy as np
 
 from spycipdb.components.hullrad import Sved, model_from_pdb
 from DEERPREdict.PRE import PREpredict
@@ -244,16 +245,21 @@ def deerpredict_helper(
         r_2=r_2,
         wh=wh,
         )
-    
-    os.remove(cwd + f"/{pdb_name}-{residue}.pkl")
+
     os.remove(cwd + f"/{pdb_name}-Z-{residue}.dat")
     os.remove(cwd + f"/.log")
-    output = cwd + f"/{pdb_name}-{residue}.dat"
-    output_df = pd.read_csv(output, delimiter=' ')
     
-    residues = output_df.iloc[:, 0].tolist()
-    intensity_ratios = output_df.iloc[:, 1].tolist()
-    pre_rates = output_df.iloc[:, 2].tolist()
+    output_pkl = cwd + f"/{pdb_name}-{residue}.pkl"
+    output_dat = cwd + f"/{pdb_name}-{residue}.dat"
     
-    return residues, intensity_ratios, pre_rates
+    pkl = pd.read_pickle(output_pkl, 'gzip')
+    dat = pd.read_csv(output_dat, delimiter=' ')
+    
+    residues = dat.iloc[:, 0].tolist()
+    ens_intensity_ratios = dat.iloc[:, 1].tolist()
+    ens_pre_rates = dat.iloc[:, 2].tolist()
+    
+    r3_dist = 1 / np.cbrt(pkl['r3'])
+    
+    return residues, ens_intensity_ratios, ens_pre_rates, r3_dist
     
